@@ -2,9 +2,12 @@
 # This script runs the live webcam sign language recognition application.
 # It captures video, extracts keypoints, runs inference, and renders the custom black canvas UI.
 
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import collections
 import datetime
-import os
 import cv2
 import numpy as np
 import torch

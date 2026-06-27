@@ -2,7 +2,10 @@
 # This script applies mirror augmentation to the processed landmark sequences.
 # It flips the coordinates horizontally, doubling the size of the training dataset.
 
+import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import numpy as np
 
 # Import the mirroring utility function

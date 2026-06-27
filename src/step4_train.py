@@ -2,7 +2,10 @@
 # This script implements and trains the Conv1D + BiLSTM + Self-Attention model.
 # It splits the augmented dataset, runs the training loop, and saves the best model.
 
+import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch

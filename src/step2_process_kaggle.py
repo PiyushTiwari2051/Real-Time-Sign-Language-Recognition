@@ -2,7 +2,10 @@
 # This script processes the raw Kaggle Parquet landmark files into numpy arrays.
 # It reads train.csv, filters for 25 target signs, extracts keypoints, and saves them.
 
+import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import json
 import numpy as np
 import pandas as pd
