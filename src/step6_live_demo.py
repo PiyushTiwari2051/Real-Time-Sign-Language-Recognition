@@ -128,7 +128,7 @@ if __name__ == '__main__':
     gen_mode = True if signer_resp == 'n' else False
     if gen_mode:
         print("Generalization mode ACTIVE. Logging predictions to results/generalisation_log.txt")
-    import mediapipe as mp
+    from mediapipe.solutions import holistic as mp_holistic
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # Load model and weights
     model = SignBridgeModel().to(device)
@@ -136,7 +136,6 @@ if __name__ == '__main__':
         model.load_state_dict(torch.load('model/signbridge_best.pth', map_location=device))
     model.eval()
     # Initialize MediaPipe Holistic
-    mp_holistic = mp.solutions.holistic
     holistic = mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5)
     cap = cv2.VideoCapture(0)
     main_loop(model, holistic, cap, device, gen_mode)
