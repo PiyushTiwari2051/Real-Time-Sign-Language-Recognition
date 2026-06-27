@@ -128,7 +128,7 @@ if __name__ == '__main__':
     gen_mode = True if signer_resp == 'n' else False
     if gen_mode:
         print("Generalization mode ACTIVE. Logging predictions to results/generalisation_log.txt")
-    from mediapipe.solutions import holistic as mp_holistic
+    from mediapipe.python.solutions import holistic as mp_holistic
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # Load model and weights
     model = SignBridgeModel().to(device)
