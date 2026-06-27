@@ -1,0 +1,28 @@
+# Virtual environment
+venv/
+signbridge_env/
+
+# Data and models
+data/
+model/
+models/
+collected_data/
+dataset/
+
+# Outputs and logs
+results/
+outputs/
+*.log
+generalisation_log.txt
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE and workspace files
+.vscode/
+.idea/
+.agents/
+.gemini/
