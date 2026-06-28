@@ -89,7 +89,7 @@ def save_custom_processed_data(X, y, label_map, dest_dir='data/processed'):
 
 if __name__ == '__main__':
     data_dir = 'dataset/processed_combine_asl_dataset'
-    image_tuples = get_image_tuples(data_dir, max_per_class=200)
+    image_tuples = get_image_tuples(data_dir, max_per_class=100)
     print(f"Found {len(image_tuples)} images.")
     labels = sorted(list(set([label for _, label in image_tuples])))
     label_map = {lbl: idx for idx, lbl in enumerate(labels)}
