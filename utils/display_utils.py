@@ -15,13 +15,6 @@ HAND_CONNECTIONS = [
     (0, 17)                              # Wrist connection
 ]
 
-# Connections for upper body pose (15 landmarks)
-POSE_CONNECTIONS = [
-    (11, 12),                            # Shoulder to shoulder
-    (11, 13), (12, 14),                  # Shoulders to elbows
-    (0, 11), (0, 12)                     # Nose to shoulders
-]
-
 def draw_glass_panel(canvas, pt1, pt2, bg_color=(15, 15, 15), border_color=(0, 255, 128), alpha=0.5):
     x1, y1 = pt1
     x2, y2 = pt2
@@ -59,8 +52,32 @@ def draw_skeleton(canvas, landmarks):
     draw_skeleton_lines(canvas, coords, HAND_CONNECTIONS, 0, (255, 200, 0), 2)
     # Hand joints: bright lime green
     draw_landmark_nodes(canvas, coords, 0, 21, (0, 255, 128), 3)
-    # Upper pose lines: soft yellow-orange
-    draw_skeleton_lines(canvas, coords, POSE_CONNECTIONS, 21, (0, 180, 255), 2)
+    
+    # Calculate natural neck/shoulder skeleton lines dynamically
+    nose = coords[21 + 0]
+    l_shoulder = coords[21 + 11]
+    r_shoulder = coords[21 + 12]
+    l_elbow = coords[21 + 13]
+    r_elbow = coords[21 + 14]
+    
+    x_ns, y_ns = int(nose[0] * 640), int(nose[1] * 480)
+    x_ls, y_ls = int(l_shoulder[0] * 640), int(l_shoulder[1] * 480)
+    x_rs, y_rs = int(r_shoulder[0] * 640), int(r_shoulder[1] * 480)
+    x_le, y_le = int(l_elbow[0] * 640), int(l_elbow[1] * 480)
+    x_re, y_re = int(r_elbow[0] * 640), int(r_elbow[1] * 480)
+    
+    color_line = (0, 180, 255)  # Electric orange/gold BGR
+    # Draw body pose lines with clean vertical neck line
+    if 0 < x_ls < 640 and 0 < y_ls < 480 and 0 < x_rs < 640 and 0 < y_rs < 480:
+        cv2.line(canvas, (x_ls, y_ls), (x_rs, y_rs), color_line, 2)
+        x_neck, y_neck = (x_ls + x_rs) // 2, (y_ls + y_rs) // 2
+        if 0 < x_ns < 640 and 0 < y_ns < 480:
+            cv2.line(canvas, (x_ns, y_ns), (x_neck, y_neck), color_line, 2)
+        if 0 < x_le < 640 and 0 < y_le < 480:
+            cv2.line(canvas, (x_ls, y_ls), (x_le, y_le), color_line, 2)
+        if 0 < x_re < 640 and 0 < y_re < 480:
+            cv2.line(canvas, (x_rs, y_rs), (x_re, y_re), color_line, 2)
+            
     # Upper pose face joints (0 to 10): tiny hot magenta dots
     draw_landmark_nodes(canvas, coords, 21, 32, (180, 0, 255), 2)
     # Upper pose body joints (11 to 14): neon blue dots
