@@ -65,11 +65,11 @@ def log_generalization(word, confidence, filepath='results/generalisation_log.tx
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         f.write(f"[{timestamp}] Pred: {word:<12} | Conf: {confidence:.2%}\n")
 
-def process_predictions(class_id, conf, votes, sentence, gen_mode):
+def process_predictions(class_id, conf, votes, sentence, gen_mode, classes):
     votes.append(class_id)
     # Perform majority voting over last 7 frames
     voted_id = collections.Counter(votes).most_common(1)[0][0]
-    word = TARGET_SIGNS[voted_id]
+    word = classes[voted_id]
     # Display '...' if confidence is low
     disp_word = word if conf >= 0.60 else "..."
     # Speak and add to sentence if confidence is high
@@ -80,8 +80,10 @@ def process_predictions(class_id, conf, votes, sentence, gen_mode):
             log_generalization(word, conf)
     return disp_word
 
-def process_frame(frame, holistic, buffer, model, device, votes, sentence, gen_mode):
-    # Convert frame to RGB for MediaPipe processing
+def process_frame(frame, holistic, buffer, model, device, votes, sentence, gen_mode, classes):
+    # Mirror the frame horizontally for natural mirror interaction
+    frame = cv2.flip(frame, 1)
+    # Convert mirrored frame to RGB for MediaPipe processing
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = holistic.process(rgb_frame)
     features = extract_live_keypoints(results)
@@ -90,19 +92,27 @@ def process_frame(frame, holistic, buffer, model, device, votes, sentence, gen_m
     disp_word, conf, attn = "...", 0.0, np.ones(30) / 30.0
     if len(buffer) == 30:
         class_id, conf, attn = run_inference(model, buffer, device)
-        disp_word = process_predictions(class_id, conf, votes, sentence, gen_mode)
-    # Create black canvas for visualization
-    canvas = np.zeros((480, 640, 3), dtype=np.uint8)
+        disp_word = process_predictions(class_id, conf, votes, sentence, gen_mode, classes)
+    
+    # Create canvas by overlaying a dark translucent layer on top of the webcam feed
+    canvas = frame.copy()
+    overlay = np.zeros_like(canvas)
+    cv2.addWeighted(canvas, 0.45, overlay, 0.55, 0, canvas)
+    
+    # Draw sleek glass HUD header panel at the top
+    from utils.display_utils import draw_glass_panel, draw_glowing_text
+    draw_glass_panel(canvas, (15, 10), (625, 80), (12, 12, 12), (0, 180, 255), 0.6)
+    draw_glowing_text(canvas, "SIGNBRIDGE PRO", (30, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2, (0, 120, 255))
+    draw_glowing_text(canvas, f"Sign: {disp_word}", (280, 52), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 128), 2, (0, 120, 0))
+    
     draw_skeleton(canvas, features)
     draw_confidence_gauge(canvas, conf)
     draw_attention_heatmap(canvas, attn)
     draw_sentence_builder(canvas, sentence)
     draw_citation_watermark(canvas)
-    # Draw prediction text on the canvas
-    cv2.putText(canvas, f"Sign: {disp_word}", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
     return canvas
 
-def main_loop(model, holistic, cap, device, gen_mode):
+def main_loop(model, holistic, cap, device, gen_mode, classes):
     # sliding buffers
     buffer = collections.deque(maxlen=30)
     votes = collections.deque(maxlen=7)
@@ -112,7 +122,7 @@ def main_loop(model, holistic, cap, device, gen_mode):
         if not ret:
             break
         # Process keypoints and render canvas
-        canvas = process_frame(frame, holistic, buffer, model, device, votes, sentence, gen_mode)
+        canvas = process_frame(frame, holistic, buffer, model, device, votes, sentence, gen_mode, classes)
         cv2.imshow("SignBridge Pro", canvas)
         key = cv2.waitKey(1) & 0xFF
         if key == 27:  # Esc
@@ -130,14 +140,20 @@ if __name__ == '__main__':
         print("Generalization mode ACTIVE. Logging predictions to results/generalisation_log.txt")
     from mediapipe.python.solutions import holistic as mp_holistic
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # Load model and weights
-    model = SignBridgeModel().to(device)
+    # Load custom classes dynamically from label map
+    import json
+    with open(os.path.join('data/processed', 'label_map.json'), 'r') as f:
+        label_map = json.load(f)
+    classes = sorted(list(label_map.keys()), key=lambda x: label_map[x])
+    num_classes = len(label_map)
+    # Load model and weights based on class count
+    model = SignBridgeModel(num_classes=num_classes).to(device)
     if os.path.exists('model/signbridge_best.pth'):
         model.load_state_dict(torch.load('model/signbridge_best.pth', map_location=device))
     model.eval()
     # Initialize MediaPipe Holistic
     holistic = mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5)
     cap = cv2.VideoCapture(0)
-    main_loop(model, holistic, cap, device, gen_mode)
+    main_loop(model, holistic, cap, device, gen_mode, classes)
     cap.release()
     cv2.destroyAllWindows()
