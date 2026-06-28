@@ -1,15 +1,14 @@
 # src/step2_process_custom_images.py
 # This script extracts 21 hand landmarks from static drawing images
-# using color-isolated K-Means and structures them into sequence data.
+# using fast contour-moments and structures them into sequence data.
 
 import os
 import json
 import cv2
 import numpy as np
 from tqdm import tqdm
-from sklearn.cluster import KMeans
 
-def get_image_tuples(data_dir, max_per_class=200):
+def get_image_tuples(data_dir, max_per_class=100):
     image_tuples = []
     # Loop over class subdirectories (0-9, a-z)
     for class_name in sorted(os.listdir(data_dir)):
@@ -30,19 +29,27 @@ def extract_wrist(img):
     y_red, x_red = np.where(mask > 0)
     if len(x_red) == 0:
         return np.array([0.0, 0.0])
-    # Centroid of red wrist pixels
     return np.array([np.mean(x_red), np.mean(y_red)])
 
-def extract_finger_joints(img, color):
+def extract_finger_joints(img, color, wrist):
     mask = cv2.inRange(img, np.array(color), np.array(color))
-    y, x = np.where(mask > 0)
-    if len(x) < 4:
-        return [np.array([0.0, 0.0])] * 4
-    pixels = np.column_stack((x, y))
-    # Cluster index line pixels into 4 joint centers
-    kmeans = KMeans(n_clusters=4, random_state=42, n_init=3)
-    kmeans.fit(pixels)
-    return kmeans.cluster_centers_
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    centroids = []
+    for c in contours:
+        M = cv2.moments(c)
+        if M['m00'] > 0:
+            cx = M['m10'] / M['m00']
+            cy = M['m01'] / M['m00']
+            centroids.append((cx, cy, cv2.contourArea(c)))
+    # Keep up to 4 largest joint circles
+    centroids = [c for c in centroids if c[2] > 2]
+    centroids = sorted(centroids, key=lambda x: -x[2])[:4]
+    # Sort joints by distance to wrist
+    centroids = sorted([np.array([c[0], c[1]]) for c in centroids], key=lambda p: np.linalg.norm(p - wrist))
+    # Pad if less than 4 joints detected
+    while len(centroids) < 4:
+        centroids.append(centroids[-1] if len(centroids) > 0 else wrist)
+    return centroids
 
 def extract_hand_landmarks(image_path):
     img = cv2.imread(image_path)
@@ -54,10 +61,9 @@ def extract_hand_landmarks(image_path):
         'Middle': [48, 255, 48], 'Ring': [0, 204, 255], 'Pinky': [128, 64, 128]
     }
     sorted_landmarks = [wrist]
-    # Process each finger and sort by distance to wrist
     for finger, color in colors_map.items():
-        joints = extract_finger_joints(img, color)
-        sorted_landmarks.extend(sorted(joints, key=lambda p: np.linalg.norm(p - wrist)))
+        joints = extract_finger_joints(img, color, wrist)
+        sorted_landmarks.extend(joints)
     # Add Z=0.0 and normalize coordinates by image size (400x400)
     lms = np.array(sorted_landmarks, dtype=np.float32) / 400.0
     return np.hstack([lms, np.zeros((21, 1), dtype=np.float32)])
