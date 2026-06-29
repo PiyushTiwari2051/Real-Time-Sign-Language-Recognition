@@ -49,7 +49,7 @@ class SignBridgeModel(nn.Module):
         # Return both logits for loss calculation and attention weights for visualization
         return logits, attn_weights.squeeze(-1)
 
-def prepare_loaders(data_dir, batch_size=64):
+def prepare_loaders(data_dir, batch_size=256):
     # Load augmented numpy dataset
     X = np.load(os.path.join(data_dir, 'X_train.npy'))
     y = np.load(os.path.join(data_dir, 'y_train.npy'))
@@ -149,7 +149,12 @@ if __name__ == '__main__':
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"Training on device: {device}")
         tr_loader, val_loader = prepare_loaders(data_dir)
-        model = SignBridgeModel().to(device)
+        # Load label map to determine number of classes
+        import json
+        with open(os.path.join('data/processed', 'label_map.json'), 'r') as f:
+            label_map = json.load(f)
+        num_classes = len(label_map)
+        model = SignBridgeModel(num_classes=num_classes).to(device)
         hist = run_training(model, tr_loader, val_loader, device)
         plot_curves(hist)
         print("Training completed! Best checkpoint saved to model/signbridge_best.pth")
