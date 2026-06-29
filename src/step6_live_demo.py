@@ -14,7 +14,6 @@ import torch
 
 # Import utility modules
 from src.step4_train import SignBridgeModel
-from src.step2_process_kaggle import TARGET_SIGNS
 from utils.display_utils import draw_skeleton, draw_confidence_gauge, draw_attention_heatmap, draw_sentence_builder, draw_citation_watermark
 from utils.tts_utils import speak_text
 

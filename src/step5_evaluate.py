@@ -16,7 +16,6 @@ from torch.utils.data import DataLoader, TensorDataset
 
 # Import our custom model architecture
 from src.step4_train import SignBridgeModel
-from src.step2_process_kaggle import TARGET_SIGNS
 
 def load_validation_loader(data_dir, batch_size=64):
     # Load augmented dataset
@@ -28,8 +27,12 @@ def load_validation_loader(data_dir, batch_size=64):
     return DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
 def evaluate_model(model_path, loader, device):
-    # Initialize and load model weights
-    model = SignBridgeModel().to(device)
+    # Initialize and load model weights based on label map length
+    import json
+    with open(os.path.join('data/processed', 'label_map.json'), 'r') as f:
+        label_map = json.load(f)
+    num_classes = len(label_map)
+    model = SignBridgeModel(num_classes=num_classes).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
     y_true, y_pred = [], []
@@ -81,9 +84,15 @@ if __name__ == '__main__':
         print("Loading validation dataset...")
         val_loader = load_validation_loader(data_path)
         print("Evaluating model...")
+        # Load target classes dynamically from label map
+        import json
+        with open(os.path.join('data/processed', 'label_map.json'), 'r') as f:
+            label_map = json.load(f)
+        classes = sorted(list(label_map.keys()), key=lambda x: label_map[x])
+        
         y_t, y_p = evaluate_model(chkpt_path, val_loader, device)
         print("Generating confusion matrix plot...")
-        plot_confusion(y_t, y_p, TARGET_SIGNS, 'results/confusion_matrix.png')
+        plot_confusion(y_t, y_p, classes, 'results/confusion_matrix.png')
         print("Writing per-class accuracies to text log...")
-        save_accuracies(y_t, y_p, TARGET_SIGNS, 'results/per_class_accuracy.txt')
+        save_accuracies(y_t, y_p, classes, 'results/per_class_accuracy.txt')
         print("Evaluation complete! Results saved in results/")
