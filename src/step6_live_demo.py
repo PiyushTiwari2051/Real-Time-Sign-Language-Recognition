@@ -62,22 +62,7 @@ def log_generalization(word, confidence, filepath='results/generalisation_log.tx
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         f.write(f"[{timestamp}] Pred: {word:<12} | Conf: {confidence:.2%}\n")
 
-def process_predictions(class_id, conf, votes, sentence, gen_mode, classes):
-    votes.append(class_id)
-    # Perform majority voting over last 7 frames
-    voted_id = collections.Counter(votes).most_common(1)[0][0]
-    word = classes[voted_id]
-    # Display '...' if confidence is low
-    disp_word = word if conf >= 0.60 else "..."
-    # Speak and add to sentence if confidence is high
-    if conf >= 0.85 and (not sentence or sentence[-1] != word):
-        sentence.append(word)
-        speak_text(word)
-        if gen_mode:
-            log_generalization(word, conf)
-    return disp_word
-
-def process_frame(frame, holistic, buffer, model, device, votes, sentence, gen_mode, classes):
+def process_frame(frame, holistic, buffer, model, device, votes, sentence_words, current_word, gen_mode, classes):
     # Mirror the frame horizontally for natural mirror interaction
     frame = cv2.flip(frame, 1)
     # Convert mirrored frame to RGB for MediaPipe processing
@@ -85,49 +70,92 @@ def process_frame(frame, holistic, buffer, model, device, votes, sentence, gen_m
     results = holistic.process(rgb_frame)
     features = extract_live_keypoints(results)
     buffer.append(features)
-    # Initialize variables for return
+    
     disp_word, conf, attn = "...", 0.0, np.ones(30) / 30.0
     if len(buffer) == 30:
         class_id, conf, attn = run_inference(model, buffer, device)
-        disp_word = process_predictions(class_id, conf, votes, sentence, gen_mode, classes)
-    
+        votes.append(class_id)
+        voted_id = collections.Counter(votes).most_common(1)[0][0]
+        word = classes[voted_id]
+        disp_word = word if conf >= 0.60 else "..."
+        if conf >= 0.85 and (not current_word or current_word[-1] != word):
+            current_word = current_word + word
+            speak_text(word)
+            if gen_mode:
+                log_generalization(word, conf)
+                
     # Create canvas by overlaying a dark translucent layer on top of the webcam feed
     canvas = frame.copy()
     overlay = np.zeros_like(canvas)
     cv2.addWeighted(canvas, 0.45, overlay, 0.55, 0, canvas)
     
     # Draw sleek glass HUD header panel at the top
-    from utils.display_utils import draw_glass_panel, draw_glowing_text
-    draw_glass_panel(canvas, (15, 10), (625, 80), (12, 12, 12), (0, 180, 255), 0.6)
+    from utils.display_utils import draw_glass_panel, draw_glowing_text, draw_hud_keyboard_suggestions, get_word_suggestions
+    draw_glass_panel(canvas, (15, 10), (625, 80), (10, 10, 10), (0, 180, 255), 0.6)
     draw_glowing_text(canvas, "SIGNBRIDGE PRO", (30, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2, (0, 120, 255))
     draw_glowing_text(canvas, f"Sign: {disp_word}", (280, 52), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 128), 2, (0, 120, 0))
     
     draw_skeleton(canvas, features)
     draw_confidence_gauge(canvas, conf)
     draw_attention_heatmap(canvas, attn)
-    draw_sentence_builder(canvas, sentence)
+    
+    # Autocomplete Suggestions
+    suggestions = get_word_suggestions(current_word)
+    draw_hud_keyboard_suggestions(canvas, current_word, suggestions)
+    
+    draw_sentence_builder(canvas, sentence_words, current_word)
     draw_citation_watermark(canvas)
-    return canvas
+    
+    return canvas, current_word, suggestions
 
 def main_loop(model, holistic, cap, device, gen_mode, classes):
     # sliding buffers
     buffer = collections.deque(maxlen=30)
     votes = collections.deque(maxlen=7)
-    sentence = []
+    sentence_words = []
+    current_word = ""
+    suggestions = []
+    
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
         # Process keypoints and render canvas
-        canvas = process_frame(frame, holistic, buffer, model, device, votes, sentence, gen_mode, classes)
+        canvas, current_word, suggestions = process_frame(
+            frame, holistic, buffer, model, device, votes, sentence_words, current_word, gen_mode, classes
+        )
         cv2.imshow("SignBridge Pro", canvas)
+        
         key = cv2.waitKey(1) & 0xFF
         if key == 27:  # Esc
             break
-        elif key == 32:  # Space
-            speak_text(" ".join(sentence))
+        elif key == 32:  # Space (finalize word)
+            if current_word:
+                sentence_words.append(current_word)
+                current_word = ""
+        elif key == 13:  # Enter (speak sentence)
+            full_sentence = " ".join(sentence_words)
+            if current_word:
+                full_sentence += " " + current_word
+            if full_sentence:
+                speak_text(full_sentence)
+        elif key == 8:  # Backspace
+            if current_word:
+                current_word = current_word[:-1]
+            elif sentence_words:
+                current_word = sentence_words.pop()
+        elif key == 9:  # Tab (accept top suggestion)
+            if suggestions:
+                current_word = suggestions[0]
+        elif key == ord('1'):
+            if len(suggestions) > 1:
+                current_word = suggestions[1]
+        elif key == ord('2'):
+            if len(suggestions) > 2:
+                current_word = suggestions[2]
         elif key == ord('c') or key == ord('C'):  # Clear
-            sentence.clear()
+            sentence_words.clear()
+            current_word = ""
 
 if __name__ == '__main__':
     # Prompt user for generalization logging setup
