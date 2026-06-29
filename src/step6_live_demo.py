@@ -22,9 +22,7 @@ def get_hand_landmarks(hand_landmarks, is_left):
         return np.zeros((21, 3), dtype=np.float32)
     coords = []
     for lm in hand_landmarks.landmark:
-        # Mirror the X coordinate for left hand
-        x = 1.0 - lm.x if is_left else lm.x
-        coords.append([x, lm.y, lm.z])
+        coords.append([lm.x, lm.y, lm.z])
     return np.array(coords, dtype=np.float32)
 
 def get_pose_landmarks(pose_landmarks):
