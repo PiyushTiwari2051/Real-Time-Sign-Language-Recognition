@@ -4,7 +4,7 @@ SignBridge Pro is a real-time American Sign Language (ASL) word recognition syst
 
 ---
 
-## 🌟 Key Features
+#🌟 Key Features
 
 * **Skeleton-Only Visualization**: The raw webcam feed is hidden. Instead, hand skeleton lines and pose joints are plotted on a black canvas. This serves as a research-grade visualization showing that inference runs purely on spatial landmark coordinates, rather than color details or background patterns.
 * **Temporal Attention Heatmap**: Shows a 30-bar real-time heatmap representing which video frames the model's self-attention mechanism evaluated as most significant for the classification.
@@ -17,7 +17,7 @@ SignBridge Pro is a real-time American Sign Language (ASL) word recognition syst
 
 ---
 
-## 🏗️ Folder Structure
+#🏗️ Folder Structure
 
 ```text
 SignBridgePro/
@@ -56,7 +56,7 @@ SignBridgePro/
 
 ---
 
-## 🔬 Model Architecture
+#🔬 Model Architecture
 
 ```text
 Input Sequence: (batch, 30 frames, 108 features)
