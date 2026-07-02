@@ -6,14 +6,13 @@ SignBridge Pro is a real-time American Sign Language (ASL) word recognition syst
 
 #🌟 Key Features
 
-* **Skeleton-Only Visualization**: The raw webcam feed is hidden. Instead, hand skeleton lines and pose joints are plotted on a black canvas. This serves as a research-grade visualization showing that inference runs purely on spatial landmark coordinates, rather than color details or background patterns.
-* **Temporal Attention Heatmap**: Shows a 30-bar real-time heatmap representing which video frames the model's self-attention mechanism evaluated as most significant for the classification.
-* **Live Speedometer Confidence Gauge**: Renders a semicircular speedometer gauge showing prediction confidence.
-  * *Below 60%*: Displays `...` (thinking).
-  * *Above 60%*: Displays the predicted sign word.
-  * *Above 85%*: Instantly triggers the text-to-speech speaker.
-* **Sentence Builder**: Recognized words with high confidence stack into a sentence. Pressing `SPACE` speaks the accumulated sentence, and pressing `C` clears it.
-* **Generalization Testing**: Prompt on startup logs predictions to a generalization text file (`results/generalisation_log.txt`) if a new, untrained signer is using the system, helping evaluate real-world accessibility robustness.
+**Skeleton-Only Visualization**: The raw webcam feed is hidden. Instead, hand skeleton lines and pose joints are plotted on a black canvas. This serves as a research-grade visualization showing that inference runs purely on spatial landmark coordinates, rather than color details or background patterns.
+**Temporal Attention Heatmap**: Shows a 30-bar real-time heatmap representing which video frames the model's self-attention mechanism evaluated as most significant for the classification. **Live Speedometer Confidence Gauge**: Renders a semicircular speedometer gauge showing prediction confidence.
+ * *Below 60%*: Displays `...` (thinking).
+ * *Above 60%*: Displays the predicted sign word.
+ * *Above 85%*: Instantly triggers the text-to-speech speaker.
+ * **Sentence Builder**: Recognized words with high confidence stack into a sentence. Pressing `SPACE` speaks the accumulated sentence, and pressing `C` clears it.
+  * **Generalization Testing**: Prompt on startup logs predictions to a generalization text file (`results/generalisation_log.txt`) if a new, untrained signer is using the system, helping evaluate real-world accessibility robustness.
 
 ---
 
